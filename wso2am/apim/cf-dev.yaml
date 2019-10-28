@@ -43,6 +43,10 @@ Metadata:
           default: VPC Configuration for Dev,Staging
         Parameters:
           - VPCID
+      - Label:
+          default: Internet Gateway
+        Parameters:
+          - InternetGateway
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -68,6 +72,8 @@ Metadata:
         default: Environment
       VPCID:
         default: VPC ID
+      InternetGateway:
+        default: InternetGateway id
 Resources:
   # networking configurations
   
@@ -87,8 +93,8 @@ Resources:
       AvailabilityZone: !Select
         - '1'
         - !GetAZs ''
-  WSO2PublicInternetGateway:
-    Type: 'AWS::EC2::InternetGateway'
+  # WSO2PublicInternetGateway:
+  #   Type: 'AWS::EC2::InternetGateway'
   WSO2PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -107,14 +113,14 @@ Resources:
     Type: 'AWS::EC2::Route'
     Properties:
       RouteTableId: !Ref WSO2PublicRouteTable
-      GatewayId: !Ref WSO2PublicInternetGateway
+      GatewayId: !Ref InternetGateway
       DestinationCidrBlock: 0.0.0.0/0
-    DependsOn: WSO2VPCInternetGatewayAttachment
-  WSO2VPCInternetGatewayAttachment:
-    Type: 'AWS::EC2::VPCGatewayAttachment'
-    Properties:
-      InternetGatewayId: !Ref WSO2PublicInternetGateway
-      VpcId: !Ref VPCID
+    # DependsOn: WSO2VPCInternetGatewayAttachment
+  # WSO2VPCInternetGatewayAttachment:
+  #   Type: 'AWS::EC2::VPCGatewayAttachment'
+  #   Properties:
+  #     InternetGatewayId: !Ref WSO2PublicInternetGateway
+  #     VpcId: !Ref VPCID
   WSO2PrivateSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
@@ -466,7 +472,7 @@ Resources:
     DependsOn:
       - WSO2SecurityGroup
       - WSO2LoadBalancer
-      - WSO2VPCInternetGatewayAttachment
+      #- WSO2VPCInternetGatewayAttachment
       - WSO2DBInstance
       - WSO2BastionInstance
       - LoggingInstanceDev
@@ -597,7 +603,7 @@ Resources:
     DependsOn:
       - WSO2SecurityGroup
       - WSO2LoadBalancer
-      - WSO2VPCInternetGatewayAttachment
+      #- WSO2VPCInternetGatewayAttachment
       - WSO2DBInstance
       - WSO2BastionInstance
       - LoggingInstanceDev
@@ -889,7 +895,7 @@ Resources:
     DependsOn:
       - WSO2SecurityGroup
       - WSO2LoadBalancer
-      - WSO2VPCInternetGatewayAttachment
+      #- WSO2VPCInternetGatewayAttachment
       - WSO2DBInstance
 Outputs:
   ConsoleURL:
@@ -1007,6 +1013,10 @@ Parameters:
     Type: String
     AllowedPattern: '.+'
     ConstraintDescription: Mandatory field
+  InternetGateway:
+     Type: String
+     AllowedPattern: '.+'
+     ConstraintDescription: Mandatory field
 Mappings:
   WSO2LoggingMasterAMIRegionMap:
     us-east-1:
