@@ -93,8 +93,6 @@ Resources:
       AvailabilityZone: !Select
         - '1'
         - !GetAZs ''
-  # WSO2PublicInternetGateway:
-  #   Type: 'AWS::EC2::InternetGateway'
   WSO2PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -115,12 +113,6 @@ Resources:
       RouteTableId: !Ref WSO2PublicRouteTable
       GatewayId: !Ref InternetGateway
       DestinationCidrBlock: 0.0.0.0/0
-    # DependsOn: WSO2VPCInternetGatewayAttachment
-  # WSO2VPCInternetGatewayAttachment:
-  #   Type: 'AWS::EC2::VPCGatewayAttachment'
-  #   Properties:
-  #     InternetGatewayId: !Ref WSO2PublicInternetGateway
-  #     VpcId: !Ref VPCID
   WSO2PrivateSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
@@ -472,7 +464,6 @@ Resources:
     DependsOn:
       - WSO2SecurityGroup
       - WSO2LoadBalancer
-      #- WSO2VPCInternetGatewayAttachment
       - WSO2DBInstance
       - WSO2BastionInstance
       - LoggingInstanceDev
