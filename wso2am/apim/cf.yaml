@@ -39,6 +39,14 @@ Metadata:
           default: Environment Configurations
           Parameters:
             - Environment
+      - Label:
+          default: VPC Configuration for Dev,Staging
+        Parameters:
+          - VPCID
+      - Label:
+          default: Internet Gateway
+        Parameters:
+          - InternetGateway
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -62,6 +70,10 @@ Metadata:
         default: Version
       Environment:
         default: Environment
+      VPCID:
+        default: VPC ID
+      InternetGateway:
+        default: InternetGateway id
 Resources:
   MonitoringInstanceIAMRoleProd:
     Type: AWS::IAM::Role
@@ -1091,6 +1103,10 @@ Parameters:
   Version:
     Type: String
   Environment:
+    Type: String
+  VPCID:
+    Type: String
+  InternetGateway:
     Type: String
 Mappings:
   WSO2MonitorMasterAMIRegionMap:
