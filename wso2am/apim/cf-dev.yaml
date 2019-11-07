@@ -47,6 +47,10 @@ Metadata:
           default: Internet Gateway
         Parameters:
           - InternetGateway
+      - Label:
+          default: Jenkins Subnet
+        Parameters:
+          - JenkinsSubnet
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -74,6 +78,8 @@ Metadata:
         default: VPC ID
       InternetGateway:
         default: InternetGateway id
+      JenkinsSubnet:
+        default: Jenkins Subnet id
 Resources:
   # networking configurations
   
@@ -225,6 +231,13 @@ Resources:
     Type: 'AWS::EFS::MountTarget'
     Properties:
       SubnetId: !Ref WSO2PrivateSubnet2
+      FileSystemId: !Ref WSO2EFSFileSystem
+      SecurityGroups:
+        - !Ref WSO2EFSSecurityGroup
+  WSO2JenkinsSubnetEFSMountTarget:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      SubnetId: !Ref JenkinsSubnet
       FileSystemId: !Ref WSO2EFSFileSystem
       SecurityGroups:
         - !Ref WSO2EFSSecurityGroup
@@ -952,6 +965,9 @@ Outputs:
           - PublicDnsName
         - ':5601'
     Description: Log Dashboard URL (Kibana Dashboard)
+  EFSID:
+    Value: !Ref WSO2EFSFileSystem
+    Description: EFS ID
 Parameters:
   AWSAccessKeyId:
     Type: String
@@ -1005,6 +1021,10 @@ Parameters:
     AllowedPattern: '.+'
     ConstraintDescription: Mandatory field
   InternetGateway:
+     Type: String
+     AllowedPattern: '.+'
+     ConstraintDescription: Mandatory field
+  JenkinsSubnet:
      Type: String
      AllowedPattern: '.+'
      ConstraintDescription: Mandatory field
