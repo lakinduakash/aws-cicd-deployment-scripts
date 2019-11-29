@@ -595,6 +595,17 @@ Resources:
           fi
           rm -rf /home/wso2user/${Product}-${Version}/repository/tenants
           ln -s /mnt/efs/tenants /home/wso2user/${Product}-${Version}/repository/tenants
+
+          #Add jar libs
+          if [ ! -d "/mnt/efs/lib" ]; then
+              mkdir -p /mnt/efs/lib
+              cp -r /home/wso2user/${Product}-${Version}/repository/components/lib /mnt/efs
+          fi
+
+          rm -rf /home/wso2user/${Product}-${Version}/repository/components/lib
+          ln -s /mnt/efs/lib /home/wso2user/${Product}-${Version}/repository/components/lib
+
+
           echo "${WSO2EFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
           /home/wso2user/${Product}-${Version}/bin/wso2server.sh start
           #sleep 30
