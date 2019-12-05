@@ -47,7 +47,7 @@ Metadata:
           default: Internet Gateway
         Parameters:
           - InternetGateway
-       - Label:
+      - Label:
           default: Jenkins Subnet
         Parameters:
           - JenkinsSubnet
