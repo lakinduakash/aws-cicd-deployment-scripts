@@ -47,6 +47,14 @@ Metadata:
           default: Internet Gateway
         Parameters:
           - InternetGateway
+       - Label:
+          default: Jenkins Subnet
+        Parameters:
+          - JenkinsSubnet
+      - Label:
+          default: WSO2 Transit Gateway
+        Parameters:
+          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -74,6 +82,10 @@ Metadata:
         default: VPC ID
       InternetGateway:
         default: InternetGateway id
+      JenkinsSubnet:
+        default: Jenkins Subnet id
+      TransitGatewayId:
+        default: Transit Gateway Id
 Resources:
   MonitoringInstanceIAMRoleProd:
     Type: AWS::IAM::Role
@@ -1135,6 +1147,10 @@ Parameters:
   VPCID:
     Type: String
   InternetGateway:
+    Type: String
+  JenkinsSubnet:
+     Type: String
+  TransitGatewayId:
     Type: String
 Mappings:
   WSO2MonitorMasterAMIRegionMap:

@@ -51,6 +51,10 @@ Metadata:
           default: Jenkins Subnet
         Parameters:
           - JenkinsSubnet
+      - Label:
+          default: WSO2 Transit Gateway
+        Parameters:
+          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -80,6 +84,8 @@ Metadata:
         default: InternetGateway id
       JenkinsSubnet:
         default: Jenkins Subnet id
+      TransitGatewayId:
+        default: Transit Gateway Id
 Resources:
   # networking configurations
   
@@ -1012,6 +1018,9 @@ Outputs:
   EFSID:
     Value: !Ref WSO2EFSFileSystem
     Description: EFS ID
+  TransitGatewayId:
+    Value: !Ref WSO2TransitGateway
+    Description: Transit Gateway Id
 Parameters:
   AWSAccessKeyId:
     Type: String
@@ -1072,6 +1081,8 @@ Parameters:
      Type: String
      AllowedPattern: '.+'
      ConstraintDescription: Mandatory field
+  TransitGatewayId:
+    Type: String
 Mappings:
   WSO2LoggingMasterAMIRegionMap:
     us-east-1:
