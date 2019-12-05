@@ -51,10 +51,6 @@ Metadata:
           default: Jenkins Subnet
         Parameters:
           - JenkinsSubnet
-      - Label:
-          default: Transit Gateway
-        Parameters:
-          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -84,8 +80,6 @@ Metadata:
         default: InternetGateway id
       JenkinsSubnet:
         default: Jenkins Subnet id
-      TransitGatewayId:
-        default: Transit Gateway id (Optional)
 Resources:
   # networking configurations
   
@@ -105,8 +99,6 @@ Resources:
       AvailabilityZone: !Select
         - '1'
         - !GetAZs ''
-  # WSO2PublicInternetGateway:
-  #   Type: 'AWS::EC2::InternetGateway'
   WSO2PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -127,12 +119,6 @@ Resources:
       RouteTableId: !Ref WSO2PublicRouteTable
       GatewayId: !Ref InternetGateway
       DestinationCidrBlock: 0.0.0.0/0
-    # DependsOn: WSO2VPCInternetGatewayAttachment
-  # WSO2VPCInternetGatewayAttachment:
-  #   Type: 'AWS::EC2::VPCGatewayAttachment'
-  #   Properties:
-  #     InternetGatewayId: !Ref WSO2PublicInternetGateway
-  #     VpcId: !Ref VPCID
   WSO2PrivateSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
@@ -245,6 +231,13 @@ Resources:
     Type: 'AWS::EFS::MountTarget'
     Properties:
       SubnetId: !Ref WSO2PrivateSubnet2
+      FileSystemId: !Ref WSO2EFSFileSystem
+      SecurityGroups:
+        - !Ref WSO2EFSSecurityGroup
+  WSO2JenkinsSubnetEFSMountTarget:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      SubnetId: !Ref JenkinsSubnet
       FileSystemId: !Ref WSO2EFSFileSystem
       SecurityGroups:
         - !Ref WSO2EFSSecurityGroup
@@ -394,137 +387,136 @@ Resources:
           echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
           cat /dev/null > ~/.bash_history && history -c
           /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2BastionInstance --region ${AWS::Region}
-  WSO2Node1LaunchConfiguration:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
-    Properties:
-      ImageId: !Ref AMIid
-      InstanceType: !Ref WSO2InstanceType
-      InstanceMonitoring: 'false'
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: '20'
-            VolumeType: gp2
-            DeleteOnTermination: 'true'
-      KeyName: !Ref KeyPairName
-      SecurityGroups:
-        - !Ref WSO2SecurityGroup
-      UserData: !Base64
-        'Fn::Sub': |
-          Content-Type: multipart/mixed; boundary="//"
-          MIME-Version: 1.0
+  # WSO2Node1LaunchConfiguration:
+  #   Type: 'AWS::AutoScaling::LaunchConfiguration'
+  #   Properties:
+  #     ImageId: !Ref AMIid
+  #     InstanceType: !Ref WSO2InstanceType
+  #     InstanceMonitoring: 'false'
+  #     BlockDeviceMappings:
+  #       - DeviceName: /dev/sda1
+  #         Ebs:
+  #           VolumeSize: '20'
+  #           VolumeType: gp2
+  #           DeleteOnTermination: 'true'
+  #     KeyName: !Ref KeyPairName
+  #     SecurityGroups:
+  #       - !Ref WSO2SecurityGroup
+  #     UserData: !Base64
+  #       'Fn::Sub': |
+  #         Content-Type: multipart/mixed; boundary="//"
+  #         MIME-Version: 1.0
 
-          --//
-          Content-Type: text/cloud-config; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="cloud-config.txt"
+  #         --//
+  #         Content-Type: text/cloud-config; charset="us-ascii"
+  #         MIME-Version: 1.0
+  #         Content-Transfer-Encoding: 7bit
+  #         Content-Disposition: attachment; filename="cloud-config.txt"
 
-          #cloud-config
-          cloud_final_modules:
-          - [scripts-user, always]
+  #         #cloud-config
+  #         cloud_final_modules:
+  #         - [scripts-user, always]
 
-          --//
-          Content-Type: text/x-shellscript; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="userdata.txt"
+  #         --//
+  #         Content-Type: text/x-shellscript; charset="us-ascii"
+  #         MIME-Version: 1.0
+  #         Content-Transfer-Encoding: 7bit
+  #         Content-Disposition: attachment; filename="userdata.txt"
 
-          #!/bin/bash
-          export PATH=~/.local/bin:$PATH
-          apt-get update >> /home/wso2user/install.log
-          apt install -y nfs-common >> /home/wso2user/install.log
-          pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-          wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
-          unzip /home/wso2user/${Product}-${Version}.zip -d /home/wso2user/
-          sed -i "s/ACCESS_KEY/${AWSAccessKeyId}/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
-          sed -i "s/REGION_NAME/${AWS::Region}/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
-          sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/conf/carbon.xml
-          sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/deployment/server/jaggeryapps/store/site/conf/site.json
-          sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/conf/api-manager.xml
-          sed -i "s/CF_DB_USERNAME/${DBUsername}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
-          sed -i "s/CF_DB_PASSWORD/${DBPassword}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
-          sed -i "s/RDS_DNS_NAME/${WSO2DBInstance.Endpoint.Address}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
-          sed -i "s^SECRET_KEY^${AWSAccessKeySecret}^g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
-          tar -xvf /opt/OpenJDK8U-jdk_8u222_linux_x64.tar.gz -C /opt/
-          export PRIVATE_IP=$(ifconfig | grep -m 1 'inet ' | awk '{print $2}')
-          export LogserverIP=${LoggingInstanceDev.PrivateIp}
-          echo "$LogserverIP logserver" >> /etc/hosts
-          sed -i "s/LOCAL-MEMBER-HOST/$PRIVATE_IP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
-          sed -i "s/WSO2SecurityGroup/$SECURITYGROUP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
-          mkdir -p /mnt/efs
-          mount -t nfs4 -o nfsvers=4.1 ${WSO2EFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-          sleep 450
-          if [ ! -d "/mnt/efs/server" ]; then
-              mkdir -p /mnt/efs/server
-              cp -r /home/wso2user/${Product}-${Version}/repository/deployment/server /mnt/efs
-          fi
-          rm -rf  /home/wso2user/${Product}-${Version}/repository/deployment/server
-          ln -s /mnt/efs/server /home/wso2user/${Product}-${Version}/repository/deployment/server
-          if [ ! -d "/mnt/efs/tenants" ]; then
-              mkdir -p /mnt/efs/tenants
-              cp -r /home/wso2user/${Product}-${Version}/repository/tenants /mnt/efs
-          fi
-          rm -rf /home/wso2user/${Product}-${Version}/repository/tenants
-          ln -s /mnt/efs/tenants /home/wso2user/${Product}-${Version}/repository/tenants
-          echo "${WSO2EFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-          /home/wso2user/${Product}-${Version}/bin/wso2server.sh start
-          sleep 30
-          end=$((SECONDS+1200))
-          while [ $SECONDS -lt $end ] ; do
-              sleep 10
-              wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-              if [ $? -eq "0" ] ; then
-                /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2Node1AutoScalingGroup --region ${AWS::Region}
-                break
-              fi
-          done
-          echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
-          cat /dev/null > ~/.bash_history && history -c
-    DependsOn:
-      - WSO2SecurityGroup
-      - WSO2LoadBalancer
-      #- WSO2VPCInternetGatewayAttachment
-      - WSO2DBInstance
-      - WSO2BastionInstance
-      - LoggingInstanceDev
-  WSO2Node1AutoScalingGroup:
-    Type: 'AWS::AutoScaling::AutoScalingGroup'
-    Properties:
-      LaunchConfigurationName: !Ref WSO2Node1LaunchConfiguration
-      DesiredCapacity: 1
-      MinSize: 1
-      MaxSize: 2
-      TargetGroupARNs:
-        - !Ref WSO2ALBTargetGroup
-        - !Ref WSO28243ALBTargetGroup
-      VPCZoneIdentifier:
-        - !Ref WSO2PrivateSubnet1
-      Tags:
-        - Key: Name
-          Value: !Join
-            - ''
-            - - 'WSO2APIM'
-              - !Ref Environment
-              - 'Instance01'
-          PropagateAtLaunch: 'true'
-        - Key: cluster
-          Value: apim
-          PropagateAtLaunch: 'true'
-    CreationPolicy:
-      ResourceSignal:
-        Count: 1
-        Timeout: PT30M
-    UpdatePolicy:
-      AutoScalingRollingUpdate:
-        MaxBatchSize: '2'
-        MinInstancesInService: '1'
-        PauseTime: PT10M
-        SuspendProcesses:
-          - AlarmNotification
-        WaitOnResourceSignals: true
-    DependsOn:
-      - WSO2LoadBalancer
+  #         #!/bin/bash
+  #         export PATH=~/.local/bin:$PATH
+  #         apt-get update >> /home/wso2user/install.log
+  #         apt install -y nfs-common >> /home/wso2user/install.log
+  #         pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+  #         wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
+  #         unzip /home/wso2user/${Product}-${Version}.zip -d /home/wso2user/
+  #         sed -i "s/ACCESS_KEY/${AWSAccessKeyId}/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
+  #         sed -i "s/REGION_NAME/${AWS::Region}/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
+  #         sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/conf/carbon.xml
+  #         sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/deployment/server/jaggeryapps/store/site/conf/site.json
+  #         sed -i "s/ALB_DNS_NAME/${WSO2LoadBalancer.DNSName}/g" /home/wso2user/${Product}-${Version}/repository/conf/api-manager.xml
+  #         sed -i "s/CF_DB_USERNAME/${DBUsername}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
+  #         sed -i "s/CF_DB_PASSWORD/${DBPassword}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
+  #         sed -i "s/RDS_DNS_NAME/${WSO2DBInstance.Endpoint.Address}/g" /home/wso2user/${Product}-${Version}/repository/conf/datasources/master-datasources.xml
+  #         sed -i "s^SECRET_KEY^${AWSAccessKeySecret}^g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
+  #         tar -xvf /opt/OpenJDK8U-jdk_8u222_linux_x64.tar.gz -C /opt/
+  #         export PRIVATE_IP=$(ifconfig | grep -m 1 'inet ' | awk '{print $2}')
+  #         export LogserverIP=${LoggingInstanceDev.PrivateIp}
+  #         echo "$LogserverIP logserver" >> /etc/hosts
+  #         sed -i "s/LOCAL-MEMBER-HOST/$PRIVATE_IP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
+  #         sed -i "s/WSO2SecurityGroup/$SECURITYGROUP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
+  #         mkdir -p /mnt/efs
+  #         mount -t nfs4 -o nfsvers=4.1 ${WSO2EFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
+  #         sleep 450
+  #         if [ ! -d "/mnt/efs/server" ]; then
+  #             mkdir -p /mnt/efs/server
+  #             cp -r /home/wso2user/${Product}-${Version}/repository/deployment/server /mnt/efs
+  #         fi
+  #         rm -rf  /home/wso2user/${Product}-${Version}/repository/deployment/server
+  #         ln -s /mnt/efs/server /home/wso2user/${Product}-${Version}/repository/deployment/server
+  #         if [ ! -d "/mnt/efs/tenants" ]; then
+  #             mkdir -p /mnt/efs/tenants
+  #             cp -r /home/wso2user/${Product}-${Version}/repository/tenants /mnt/efs
+  #         fi
+  #         rm -rf /home/wso2user/${Product}-${Version}/repository/tenants
+  #         ln -s /mnt/efs/tenants /home/wso2user/${Product}-${Version}/repository/tenants
+  #         echo "${WSO2EFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
+  #         /home/wso2user/${Product}-${Version}/bin/wso2server.sh start
+  #         sleep 30
+  #         end=$((SECONDS+1200))
+  #         while [ $SECONDS -lt $end ] ; do
+  #             sleep 10
+  #             wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
+  #             if [ $? -eq "0" ] ; then
+  #               /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2Node1AutoScalingGroup --region ${AWS::Region}
+  #               break
+  #             fi
+  #         done
+  #         echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
+  #         cat /dev/null > ~/.bash_history && history -c
+  #   DependsOn:
+  #     - WSO2SecurityGroup
+  #     - WSO2LoadBalancer
+  #     - WSO2DBInstance
+  #     - WSO2BastionInstance
+  #     - LoggingInstanceDev
+  # WSO2Node1AutoScalingGroup:
+  #   Type: 'AWS::AutoScaling::AutoScalingGroup'
+  #   Properties:
+  #     LaunchConfigurationName: !Ref WSO2Node1LaunchConfiguration
+  #     DesiredCapacity: 1
+  #     MinSize: 1
+  #     MaxSize: 2
+  #     TargetGroupARNs:
+  #       - !Ref WSO2ALBTargetGroup
+  #       - !Ref WSO28243ALBTargetGroup
+  #     VPCZoneIdentifier:
+  #       - !Ref WSO2PrivateSubnet1
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Join
+  #           - ''
+  #           - - 'WSO2APIM'
+  #             - !Ref Environment
+  #             - 'Instance01'
+  #         PropagateAtLaunch: 'true'
+  #       - Key: cluster
+  #         Value: apim
+  #         PropagateAtLaunch: 'true'
+  #   CreationPolicy:
+  #     ResourceSignal:
+  #       Count: 1
+  #       Timeout: PT30M
+  #   UpdatePolicy:
+  #     AutoScalingRollingUpdate:
+  #       MaxBatchSize: '2'
+  #       MinInstancesInService: '1'
+  #       PauseTime: PT20M
+  #       SuspendProcesses:
+  #         - AlarmNotification
+  #       WaitOnResourceSignals: true
+  #   DependsOn:
+  #     - WSO2LoadBalancer
   WSO2Node2LaunchConfiguration:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Properties:
@@ -562,6 +554,7 @@ Resources:
           Content-Disposition: attachment; filename="userdata.txt"
 
           #!/bin/bash
+          echo "$(date) starting script" >> /tmp/userdata.log
           export PATH=~/.local/bin:$PATH
           apt-get update >> /home/wso2user/install.log
           apt install -y nfs-common >> /home/wso2user/install.log
@@ -584,8 +577,12 @@ Resources:
           sed -i "s/LOCAL-MEMBER-HOST/$PRIVATE_IP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
           sed -i "s/WSO2SecurityGroup/$SECURITYGROUP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
           mkdir -p /mnt/efs
+          #start mounting
+          echo "$(date) start mounting" >> /tmp/userdata.log
           mount -t nfs4 -o nfsvers=4.1 ${WSO2EFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-          sleep 450
+          echo "$(date) mount done" >> /tmp/userdata.log
+          #mount done
+          #sleep 450
           if [ ! -d "/mnt/efs/server" ]; then
               mkdir -p /mnt/efs/server
               cp -r /home/wso2user/${Product}-${Version}/repository/deployment/server /mnt/efs
@@ -598,12 +595,26 @@ Resources:
           fi
           rm -rf /home/wso2user/${Product}-${Version}/repository/tenants
           ln -s /mnt/efs/tenants /home/wso2user/${Product}-${Version}/repository/tenants
+
+          #Add jar libs
+          if [ ! -d "/mnt/efs/lib" ]; then
+              mkdir -p /mnt/efs/lib
+              cp -r /home/wso2user/${Product}-${Version}/repository/components/lib /mnt/efs
+          fi
+
+          rm -rf /home/wso2user/${Product}-${Version}/repository/components/lib
+          ln -s /mnt/efs/lib /home/wso2user/${Product}-${Version}/repository/components/lib
+
+
           echo "${WSO2EFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
           /home/wso2user/${Product}-${Version}/bin/wso2server.sh start
-          sleep 30
+          #sleep 30
+
+          echo "$(date) start sending request" >> /tmp/userdata.log
           end=$((SECONDS+1200))
           while [ $SECONDS -lt $end ] ; do
-              sleep 10
+              sleep 1
+              # remove wait times and go diretly to the loop with no sleeps inside
               wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
               if [ $? -eq "0" ] ; then
                 /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2Node2AutoScalingGroup --region ${AWS::Region}
@@ -612,6 +623,7 @@ Resources:
           done
           echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
           cat /dev/null > ~/.bash_history && history -c
+          echo "$(date) finished" >> /tmp/userdata.log
     DependsOn:
       - WSO2SecurityGroup
       - WSO2LoadBalancer
@@ -623,8 +635,8 @@ Resources:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
       LaunchConfigurationName: !Ref WSO2Node2LaunchConfiguration
-      DesiredCapacity: 1
-      MinSize: 1
+      DesiredCapacity: 2
+      MinSize: 2
       MaxSize: 2
       TargetGroupARNs:
         - !Ref WSO2ALBTargetGroup
@@ -1000,9 +1012,6 @@ Outputs:
   EFSID:
     Value: !Ref WSO2EFSFileSystem
     Description: EFS ID
-  TransitGateway:
-    Value: !Ref WSO2TransitGateway
-    Description: Transit Gatway to connect VPCs
 Parameters:
   AWSAccessKeyId:
     Type: String
@@ -1063,8 +1072,6 @@ Parameters:
      Type: String
      AllowedPattern: '.+'
      ConstraintDescription: Mandatory field
-  TransitGatewayId:
-    Type: String
 Mappings:
   WSO2LoggingMasterAMIRegionMap:
     us-east-1:

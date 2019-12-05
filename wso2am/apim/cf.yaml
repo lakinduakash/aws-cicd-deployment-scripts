@@ -40,21 +40,13 @@ Metadata:
           Parameters:
             - Environment
       - Label:
-          default: VPC Configuration (Optional for prod)
+          default: VPC Configuration for Dev,Staging
         Parameters:
           - VPCID
       - Label:
           default: Internet Gateway
         Parameters:
           - InternetGateway
-      - Label:
-          default: Jenkins Subnet
-        Parameters:
-          - JenkinsSubnet
-      - Label:
-          default: Transit Gateway
-        Parameters:
-          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -82,10 +74,6 @@ Metadata:
         default: VPC ID
       InternetGateway:
         default: InternetGateway id
-      JenkinsSubnet:
-        default: Jenkins Subnet id
-      TransitGatewayId:
-        default: Transit Gateway id
 Resources:
   MonitoringInstanceIAMRoleProd:
     Type: AWS::IAM::Role
@@ -1148,10 +1136,6 @@ Parameters:
     Type: String
   InternetGateway:
     Type: String
-  JenkinsSubnet:
-     Type: String
-  TransitGatewayId:
-    Type: String
 Mappings:
   WSO2MonitorMasterAMIRegionMap:
     us-east-1:
@@ -1159,7 +1143,7 @@ Mappings:
     us-east-2:
       Ubuntu1804: ami-025381ad18973cd94
     us-west-1:
-      Ubuntu1804: ami-098eda006170f2afb
+      Ubuntu1804: ami-0d7d4852f5939bc5e
     us-west-2:
       Ubuntu1804: ami-06b2d90e2e762a752
     ap-south-1:
