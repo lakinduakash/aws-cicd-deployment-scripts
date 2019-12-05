@@ -642,6 +642,7 @@ Resources:
           Content-Disposition: attachment; filename="userdata.txt"
 
           #!/bin/bash
+          echo "$(date) starting script" >> /tmp/userdata.log
           export PATH=~/.local/bin:$PATH
           apt-get update >> /home/wso2user/install.log
           apt install -y nfs-common >> /home/wso2user/install.log
@@ -665,7 +666,7 @@ Resources:
           sed -i "s/WSO2SecurityGroup/$SECURITYGROUP/g" /home/wso2user/${Product}-${Version}/repository/conf/axis2/axis2.xml
           mkdir -p /mnt/efs
           mount -t nfs4 -o nfsvers=4.1 ${WSO2APIMEFSFileSystemProd}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-          sleep 450
+          #sleep 450
           if [ ! -d "/mnt/efs/server" ]; then
               mkdir -p /mnt/efs/server
               cp -r /home/wso2user/${Product}-${Version}/repository/deployment/server /mnt/efs
@@ -678,12 +679,26 @@ Resources:
           fi
           rm -rf /home/wso2user/${Product}-${Version}/repository/tenants
           ln -s /mnt/efs/tenants /home/wso2user/${Product}-${Version}/repository/tenants
-          echo "${WSO2APIMEFSFileSystemProd}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
+
+          #Add jar libs
+          if [ ! -d "/mnt/efs/lib" ]; then
+              mkdir -p /mnt/efs/lib
+              cp -r /home/wso2user/${Product}-${Version}/repository/components/lib /mnt/efs
+          fi
+
+          rm -rf /home/wso2user/${Product}-${Version}/repository/components/lib
+          ln -s /mnt/efs/lib /home/wso2user/${Product}-${Version}/repository/components/lib
+
+
+          echo "${WSO2EFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
           /home/wso2user/${Product}-${Version}/bin/wso2server.sh start
-          sleep 30
+          #sleep 30
+
+          echo "$(date) start sending request" >> /tmp/userdata.log
           end=$((SECONDS+1200))
           while [ $SECONDS -lt $end ] ; do
-              sleep 10
+              sleep 1
+              # remove wait times and go diretly to the loop with no sleeps inside
               wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
               if [ $? -eq "0" ] ; then
                 /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode2AutoScalingGroup --region ${AWS::Region}
@@ -692,6 +707,7 @@ Resources:
           done
           echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
           cat /dev/null > ~/.bash_history && history -c
+          echo "$(date) finished" >> /tmp/userdata.log
     DependsOn:
       - WSO2APIMSecurityGroupProd
       - WSO2APIMLoadBalancerProd
