@@ -39,6 +39,22 @@ Metadata:
           default: Environment Configurations
           Parameters:
             - Environment
+      - Label:
+          default: VPC Configuration (Optional for prod)
+        Parameters:
+          - VPCID
+      - Label:
+          default: Internet Gateway
+        Parameters:
+          - InternetGateway
+      - Label:
+          default: Jenkins Subnet
+        Parameters:
+          - JenkinsSubnet
+      - Label:
+          default: Transit Gateway
+        Parameters:
+          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -62,6 +78,14 @@ Metadata:
         default: Version
       Environment:
         default: Environment
+      VPCID:
+        default: VPC ID
+      InternetGateway:
+        default: InternetGateway id
+      JenkinsSubnet:
+        default: Jenkins Subnet id
+      TransitGatewayId:
+        default: Transit Gateway id
 Resources:
   MonitoringInstanceIAMRoleProd:
     Type: AWS::IAM::Role
@@ -104,14 +128,14 @@ Resources:
   WSO2APIMVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: 10.1.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
   WSO2APIMPublicSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.254.0/24
+      CidrBlock: 10.1.254.0/24
       AvailabilityZone: !Select
         - '0'
         - !GetAZs ''
@@ -119,7 +143,7 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.252.0/24
+      CidrBlock: 10.1.252.0/24
       AvailabilityZone: !Select
         - '1'
         - !GetAZs ''
@@ -155,7 +179,7 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: 10.1.1.0/24
       AvailabilityZone: !Select
         - '0'
         - !GetAZs ''
@@ -163,9 +187,17 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: 10.1.2.0/24
       AvailabilityZone: !Select
         - '1'
+        - !GetAZs ''
+  WSO2APIMPrivateSubnet3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2APIMVPC
+      CidrBlock: 10.1.3.0/24
+      AvailabilityZone: !Select
+        - '0'
         - !GetAZs ''
   WSO2APIMPrivateSubnetRouteTable:
     Type: 'AWS::EC2::RouteTable'
@@ -259,6 +291,13 @@ Resources:
     Type: 'AWS::EFS::MountTarget'
     Properties:
       SubnetId: !Ref WSO2APIMPrivateSubnet2
+      FileSystemId: !Ref WSO2APIMEFSFileSystemProd
+      SecurityGroups:
+        - !Ref WSO2APIMEFSSecurityGroup
+  WSO2APIMPrivateSubnet3EFSMountTarget:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      SubnetId: !Ref WSO2APIMPrivateSubnet3
       FileSystemId: !Ref WSO2APIMEFSFileSystemProd
       SecurityGroups:
         - !Ref WSO2APIMEFSSecurityGroup
@@ -970,6 +1009,16 @@ Resources:
       - WSO2APIMLoadBalancerProd
       - WSO2APIMVPCInternetGatewayAttachment
       - WSO2APIMDBInstance
+  WSO2ProdTransitGatewayAttachment:    
+    Type: "AWS::EC2::TransitGatewayAttachment"
+    Properties:
+      SubnetIds: 
+        - !Ref WSO2APIMPrivateSubnet3
+      Tags: 
+        - Key: Name
+          Value: WSO2 Transit Gateway
+      TransitGatewayId: !Ref TransitGatewayId
+      VpcId: !Ref WSO2APIMVPC
 Outputs:
   ConsoleURL:
     Value: !Join
@@ -1043,6 +1092,9 @@ Outputs:
           - PublicDnsName
         - ':5601'
     Description: Log Dashboard URL (Kibana Dashboard)
+  EFSID:
+    Value: !Ref WSO2APIMEFSFileSystemProd
+    Description: Production EFS ID
 Parameters:
   AWSAccessKeyId:
     Type: String
@@ -1091,6 +1143,14 @@ Parameters:
   Version:
     Type: String
   Environment:
+    Type: String
+  VPCID:
+    Type: String
+  InternetGateway:
+    Type: String
+  JenkinsSubnet:
+     Type: String
+  TransitGatewayId:
     Type: String
 Mappings:
   WSO2MonitorMasterAMIRegionMap:
