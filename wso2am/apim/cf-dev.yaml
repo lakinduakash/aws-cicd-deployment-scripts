@@ -47,6 +47,14 @@ Metadata:
           default: Internet Gateway
         Parameters:
           - InternetGateway
+      - Label:
+          default: Jenkins Subnet
+        Parameters:
+          - JenkinsSubnet
+      - Label:
+          default: Transit Gateway
+        Parameters:
+          - TransitGatewayId
     ParameterLabels:
       AWSAccessKeyId:
         default: AWS Access Key ID
@@ -74,6 +82,10 @@ Metadata:
         default: VPC ID
       InternetGateway:
         default: InternetGateway id
+      JenkinsSubnet:
+        default: Jenkins Subnet id
+      TransitGatewayId:
+        default: Transit Gateway id (Optional)
 Resources:
   # networking configurations
   
@@ -897,6 +909,30 @@ Resources:
       - WSO2LoadBalancer
       #- WSO2VPCInternetGatewayAttachment
       - WSO2DBInstance
+  WSO2TransitGateway:
+    Type: "AWS::EC2::TransitGateway"
+    Properties:
+      AutoAcceptSharedAttachments: enable
+      DefaultRouteTableAssociation: enable
+      DefaultRouteTablePropagation: enable
+      Description: WSO2 Transit Gateway 
+      DnsSupport: enable
+      VpnEcmpSupport: enable
+      Tags: 
+        - Key: Name
+          Value: WSO2 Transit Gateway
+
+  WSO2DevTransitGatewayAttachment:    
+    Type: "AWS::EC2::TransitGatewayAttachment"
+    Properties:
+      SubnetIds: 
+        - !Ref JenkinsSubnet
+      Tags: 
+        - Key: Name
+          Value: WSO2 Transite Gateway
+      TransitGatewayId: !Ref WSO2TransitGateway
+      VpcId: !Ref VPCID
+  
 Outputs:
   ConsoleURL:
     Value: !Join
@@ -961,6 +997,12 @@ Outputs:
           - PublicDnsName
         - ':5601'
     Description: Log Dashboard URL (Kibana Dashboard)
+  EFSID:
+    Value: !Ref WSO2EFSFileSystem
+    Description: EFS ID
+  TransitGateway:
+    Value: !Ref WSO2TransitGateway
+    Description: Transit Gatway to connect VPCs
 Parameters:
   AWSAccessKeyId:
     Type: String
@@ -1017,6 +1059,12 @@ Parameters:
      Type: String
      AllowedPattern: '.+'
      ConstraintDescription: Mandatory field
+  JenkinsSubnet:
+     Type: String
+     AllowedPattern: '.+'
+     ConstraintDescription: Mandatory field
+  TransitGatewayId:
+    Type: String
 Mappings:
   WSO2LoggingMasterAMIRegionMap:
     us-east-1:
