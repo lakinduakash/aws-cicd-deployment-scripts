@@ -209,12 +209,12 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref WSO2APIMNATGateway
       RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
-  WSO2TransitGatewayRoute:
-    Type: 'AWS::EC2::Route'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
-      TransitGatewayId: !Ref TransitGatewayId
-      DestinationCidrBlock: 10.0.0.0/16
+  # WSO2TransitGatewayRoute:
+  #   Type: 'AWS::EC2::Route'
+  #   Properties:
+  #     RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
+  #     TransitGatewayId: !Ref TransitGatewayId
+  #     DestinationCidrBlock: 10.0.0.0/16
   WSO2APIMPrivateSubnet1RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
