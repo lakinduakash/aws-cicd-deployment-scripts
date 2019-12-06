@@ -1056,7 +1056,6 @@ Resources:
     Type: "AWS::EC2::TransitGatewayAttachment"
     Properties:
       SubnetIds: 
-        - !Ref WSO2APIMPrivateSubnet1
         - !Ref WSO2APIMPrivateSubnet2
         - !Ref WSO2APIMPrivateSubnet3
       Tags: 
